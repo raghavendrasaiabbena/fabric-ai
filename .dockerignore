@@ -1,0 +1,12 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+uploads/
+enhanced/
+composed/
+models/
+.git/
+.gitignore

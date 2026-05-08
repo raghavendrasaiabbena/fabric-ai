@@ -336,7 +336,10 @@
 </main>
 
 <script>
-const API = 'http://localhost:8000';
+// Use same origin when served from Railway/cloud; fall back to localhost when opening file directly
+const API = (window.location.origin && window.location.origin !== 'null' && !window.location.origin.startsWith('file'))
+  ? window.location.origin
+  : 'http://localhost:8000';
 
 // ── App state ─────────────────────────────────────────────────
 let state = {
