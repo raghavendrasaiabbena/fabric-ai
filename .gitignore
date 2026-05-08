@@ -1,0 +1,22 @@
+# API keys — never commit
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Generated images (can be large)
+uploads/
+enhanced/
+composed/
+
+# AI model weights (large binary files)
+models/
+
+# OS
+.DS_Store
+Thumbs.db

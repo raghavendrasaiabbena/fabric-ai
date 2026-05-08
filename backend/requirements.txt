@@ -1,0 +1,12 @@
+fastapi==0.115.5
+uvicorn==0.32.1
+python-multipart==0.0.18
+pillow==11.0.0
+opencv-python==4.10.0.84
+opencv-contrib-python==4.10.0.84
+numpy==1.26.4
+requests==2.32.3
+aiofiles==24.1.0
+replicate==1.0.4
+python-dotenv==1.0.1
+anthropic==0.40.0

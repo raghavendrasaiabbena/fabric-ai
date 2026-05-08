@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Fabric AI — Image Enhancer</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0f1117;--surface:#1a1d27;--surface2:#242838;--border:#2e3349;
+      --accent:#6c63ff;--accent2:#00d4aa;--text:#e8eaf0;--muted:#7b82a0;
+      --warn:#f5a623;--danger:#ff6b6b;--radius:14px;
+      --shadow:0 8px 32px rgba(0,0,0,.4);
+    }
+    body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+
+    /* ── Header ── */
+    header{padding:14px 36px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;background:var(--surface)}
+    .logo{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+    header h1{font-size:17px;font-weight:700}
+    header p{font-size:11px;color:var(--muted);margin-top:1px}
+    .header-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+    #method-badge{padding:3px 11px;border-radius:20px;font-size:11px;font-weight:600}
+    #method-badge.ai{background:rgba(0,212,170,.15);border:1px solid rgba(0,212,170,.4);color:var(--accent2)}
+    #method-badge.local{background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.4);color:var(--accent)}
+    #btn-settings{background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--muted);padding:5px 10px;font-size:16px;cursor:pointer}
+    #btn-settings:hover{color:var(--text)}
+
+    /* ── Settings panel ── */
+    #settings-panel{display:none;background:var(--surface);border-bottom:1px solid var(--border);padding:18px 36px}
+    #settings-panel h3{font-size:13px;font-weight:700;margin-bottom:12px}
+    .setting-group{margin-bottom:14px}
+    .setting-group label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+    .token-row{display:flex;gap:8px;flex-wrap:wrap}
+    .token-row input{flex:1;min-width:240px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:13px;font-family:monospace}
+    .token-row input:focus{outline:none;border-color:var(--accent)}
+    .token-row input::placeholder{color:var(--muted)}
+    .btn-sm{padding:9px 18px;background:linear-gradient(135deg,var(--accent),#9b5de5);border:none;border-radius:7px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+    .btn-sm:hover{opacity:.85}
+    .token-msg{font-size:12px;margin-top:7px;padding:6px 10px;border-radius:7px;display:none}
+    .token-msg.ok{background:rgba(0,212,170,.1);color:var(--accent2);border:1px solid rgba(0,212,170,.3)}
+    .token-msg.err{background:rgba(255,107,107,.1);color:var(--danger);border:1px solid rgba(255,107,107,.3)}
+    .hint{margin-top:7px;font-size:11px;color:var(--muted);line-height:1.6}
+    .hint a{color:var(--accent);text-decoration:none}
+
+    /* ── Step indicator ── */
+    #step-bar{display:none;padding:16px 36px;background:var(--surface);border-bottom:1px solid var(--border)}
+    .steps{display:flex;align-items:center;gap:0;max-width:600px}
+    .step{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--muted)}
+    .step.active{color:var(--text)}
+    .step.done{color:var(--accent2)}
+    .step-num{width:26px;height:26px;border-radius:50%;border:2px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+    .step.done .step-num{background:var(--accent2);border-color:var(--accent2);color:#000}
+    .step.active .step-num{border-color:var(--accent);color:var(--accent)}
+    .step-line{flex:1;height:2px;background:var(--border);margin:0 8px}
+    .step-line.done{background:var(--accent2)}
+
+    /* ── Main ── */
+    main{flex:1;padding:28px 36px;max-width:1300px;width:100%;margin:0 auto}
+
+    /* ── Upload ── */
+    #upload-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:52px 36px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface);position:relative}
+    #upload-zone:hover,#upload-zone.drag-over{border-color:var(--accent);background:rgba(108,99,255,.05)}
+    #upload-zone .icon{font-size:44px;margin-bottom:12px}
+    #upload-zone h2{font-size:19px;font-weight:600;margin-bottom:7px}
+    #upload-zone p{color:var(--muted);font-size:14px}
+    #upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+    .btn-upload{display:inline-block;margin-top:16px;padding:10px 28px;background:linear-gradient(135deg,var(--accent),#9b5de5);border-radius:8px;font-size:14px;font-weight:600;color:#fff;cursor:pointer}
+    .formats{margin-top:9px;font-size:11px;color:var(--muted)}
+    #quality-ind{margin-top:14px;display:inline-flex;align-items:center;gap:7px;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600}
+    #quality-ind.ai{background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.3);color:var(--accent2)}
+    #quality-ind.basic{background:rgba(108,99,255,.1);border:1px solid rgba(108,99,255,.3);color:var(--accent)}
+    .qi-dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:pulse 1.5s ease-in-out infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+    /* ── Processing ── */
+    #processing{display:none;text-align:center;padding:70px 36px;background:var(--surface);border-radius:var(--radius)}
+    .spinner{width:56px;height:56px;border:4px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 20px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    #processing h2{font-size:19px;margin-bottom:7px}
+    #processing p{color:var(--muted);font-size:13px}
+
+    /* ── Section wrapper ── */
+    .section{display:none}
+
+    /* ── Step 1 Results ── */
+    .stats-bar{display:flex;gap:9px;margin-bottom:18px;flex-wrap:wrap}
+    .pill{padding:6px 13px;background:var(--surface);border:1px solid var(--border);border-radius:30px;font-size:12px;display:flex;align-items:center;gap:7px}
+    .pill .lbl{color:var(--muted)}
+    .pill .val{font-weight:600}
+    .pill.hi .val{color:var(--accent2)}
+    .compare-wrap{background:var(--surface);border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow)}
+    .compare-hdr{display:flex;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--border);font-size:13px;color:var(--muted)}
+    .compare-hdr span{display:flex;align-items:center;gap:7px}
+    .dot{width:8px;height:8px;border-radius:50%}
+    .dot.b{background:var(--warn)}.dot.a{background:var(--accent2)}
+    .slider-box{position:relative;width:100%;overflow:hidden;user-select:none;cursor:ew-resize;background:#000}
+    .slider-box img{display:block;width:100%;max-height:65vh;object-fit:contain}
+    .img-enh{position:relative;z-index:1}
+    .img-orig-wrap{position:absolute;top:0;left:0;height:100%;overflow:hidden;z-index:2;width:50%}
+    .img-orig-wrap img{width:100vw;max-width:none;max-height:65vh;object-fit:contain;position:absolute;top:0;left:0}
+    .divider{position:absolute;top:0;left:50%;width:3px;height:100%;background:#fff;z-index:10;transform:translateX(-50%);pointer-events:none;box-shadow:0 0 10px rgba(0,0,0,.5)}
+    .handle{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:42px;height:42px;background:#fff;border-radius:50%;z-index:11;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.5);pointer-events:none}
+    .handle svg{width:19px;height:19px;fill:#333}
+    .before-lbl,.after-lbl{position:absolute;top:12px;z-index:12;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.5px;pointer-events:none}
+    .before-lbl{left:12px;background:rgba(245,166,35,.9);color:#000}
+    .after-lbl{right:12px;background:rgba(0,212,170,.9);color:#000}
+    .method-info{margin-top:12px;padding:10px 14px;background:rgba(108,99,255,.07);border:1px solid rgba(108,99,255,.2);border-radius:9px;font-size:12px;color:var(--muted)}
+    .method-info strong{color:var(--text)}
+    .actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+    .btn{padding:10px 24px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;text-decoration:none;display:inline-flex;align-items:center;gap:7px;transition:opacity .2s,transform .1s}
+    .btn:active{transform:scale(.97)}
+    .btn-primary{background:linear-gradient(135deg,var(--accent2),#00a884);color:#fff}
+    .btn-accent{background:linear-gradient(135deg,var(--accent),#9b5de5);color:#fff}
+    .btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+    .btn:hover{opacity:.85}
+
+    /* ── Step 2: Label Form ── */
+    .step2-layout{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
+    @media(max-width:800px){.step2-layout{grid-template-columns:1fr}}
+    .preview-thumb{border-radius:10px;overflow:hidden;border:1px solid var(--border);background:#000}
+    .preview-thumb img{width:100%;display:block;max-height:55vh;object-fit:contain}
+    .swatch-indicator{position:relative}
+    .form-card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);padding:22px}
+    .form-card h3{font-size:15px;font-weight:700;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+    .form-group{display:flex;flex-direction:column;gap:5px}
+    .form-group.full{grid-column:1/-1}
+    .form-group label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+    .form-group input{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:13px}
+    .form-group input:focus{outline:none;border-color:var(--accent)}
+    .form-group input::placeholder{color:var(--muted)}
+    .divider-label{text-align:center;position:relative;margin:16px 0}
+    .divider-label::before{content:'';position:absolute;top:50%;left:0;right:0;height:1px;background:var(--border)}
+    .divider-label span{background:var(--surface);padding:0 12px;position:relative;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+    .swatch-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;max-height:260px;overflow-y:auto}
+    .swatch-row{display:flex;align-items:center;gap:10px}
+    .swatch-num{width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .swatch-row input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 11px;color:var(--text);font-size:13px}
+    .swatch-row input:focus{outline:none;border-color:var(--accent)}
+    .logo-drop{border:2px dashed var(--border);border-radius:9px;padding:14px;text-align:center;cursor:pointer;font-size:12px;color:var(--muted);position:relative;transition:all .2s;margin-bottom:16px}
+    .logo-drop:hover{border-color:var(--accent)}
+    .logo-drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+    .logo-drop.has-logo{border-color:var(--accent2);color:var(--accent2)}
+    .detect-status{font-size:12px;padding:8px 12px;border-radius:7px;margin-bottom:12px;display:none}
+    .detect-status.ai{background:rgba(0,212,170,.1);color:var(--accent2);border:1px solid rgba(0,212,170,.3)}
+    .detect-status.manual{background:rgba(108,99,255,.1);color:var(--accent);border:1px solid rgba(108,99,255,.3)}
+
+    /* ── Step 3: Composed result ── */
+    .composed-wrap{background:var(--surface);border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow)}
+    .composed-wrap img{width:100%;display:block;max-height:75vh;object-fit:contain;background:#000}
+
+    /* ── Error ── */
+    #error-box{display:none;padding:13px 16px;background:rgba(255,80,80,.1);border:1px solid rgba(255,80,80,.3);border-radius:9px;color:#ff8080;font-size:13px;margin-top:12px}
+
+    @media(max-width:600px){main{padding:16px}header,#settings-panel,#step-bar{padding:12px 16px}.stats-bar{flex-direction:column}}
+  </style>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────────────────── -->
+<header>
+  <div class="logo">🧵</div>
+  <div>
+    <h1>Fabric AI — Image Enhancer</h1>
+    <p>Upload · Enhance · Label · Brand</p>
+  </div>
+  <div class="header-right">
+    <div id="method-badge" class="local">⚙ Loading…</div>
+    <button id="btn-settings">⚙</button>
+  </div>
+</header>
+
+<!-- ── Settings ─────────────────────────────────────────────────── -->
+<div id="settings-panel">
+  <h3>🔑 API Configuration</h3>
+  <div class="setting-group">
+    <label>Replicate API Token — Real-ESRGAN (image enhancement)</label>
+    <div class="token-row">
+      <input type="password" id="replicate-input" placeholder="r8_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off"/>
+      <button class="btn-sm" onclick="saveReplicate()">Activate</button>
+    </div>
+    <div id="replicate-msg" class="token-msg"></div>
+    <div class="hint">Get token at <a href="https://replicate.com/account/api-tokens" target="_blank">replicate.com</a> · ~$0.003/image · First 50 free</div>
+  </div>
+  <div class="setting-group">
+    <label>Anthropic API Key — Claude Vision (swatch detection)</label>
+    <div class="token-row">
+      <input type="password" id="anthropic-input" placeholder="sk-ant-xxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off"/>
+      <button class="btn-sm" onclick="saveAnthropic()">Activate</button>
+    </div>
+    <div id="anthropic-msg" class="token-msg"></div>
+    <div class="hint">Get key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> · Used to auto-detect fabric swatches</div>
+  </div>
+</div>
+
+<!-- ── Step Bar ──────────────────────────────────────────────────── -->
+<div id="step-bar">
+  <div class="steps">
+    <div class="step" id="s1"><div class="step-num">1</div><span>Enhance</span></div>
+    <div class="step-line" id="l1"></div>
+    <div class="step" id="s2"><div class="step-num">2</div><span>Label</span></div>
+    <div class="step-line" id="l2"></div>
+    <div class="step" id="s3"><div class="step-num">3</div><span>Brand</span></div>
+  </div>
+</div>
+
+<!-- ── Main ─────────────────────────────────────────────────────── -->
+<main>
+
+  <!-- Upload -->
+  <div id="upload-zone">
+    <input type="file" id="file-input" accept="image/*"/>
+    <div class="icon">📸</div>
+    <h2>Drop your fabric photo here</h2>
+    <p>Drag &amp; drop or click to browse</p>
+    <div class="btn-upload">Choose Image</div>
+    <div class="formats">JPG · PNG · WEBP · TIFF &nbsp;·&nbsp; Max 50 MB</div>
+    <div id="quality-ind" class="basic"><span class="qi-dot"></span><span id="qi-text">Local fallback active</span></div>
+  </div>
+
+  <!-- Processing spinner -->
+  <div id="processing">
+    <div class="spinner"></div>
+    <h2 id="proc-title">Enhancing fabric image…</h2>
+    <p id="proc-step">Uploading…</p>
+  </div>
+
+  <!-- Error -->
+  <div id="error-box"></div>
+
+  <!-- ── STEP 1 Result ── -->
+  <div id="step1-result" class="section">
+    <div class="stats-bar" id="stats-bar"></div>
+    <div class="compare-wrap">
+      <div class="compare-hdr">
+        <span><span class="dot b"></span>Original</span>
+        <span>← Drag to compare →</span>
+        <span><span class="dot a"></span>AI Enhanced</span>
+      </div>
+      <div class="slider-box" id="slider">
+        <img class="img-enh" id="img-enh" src="" alt="Enhanced"/>
+        <div class="img-orig-wrap" id="orig-wrap">
+          <img id="img-orig" src="" alt="Original"/>
+        </div>
+        <div class="divider" id="divider"></div>
+        <div class="handle" id="handle">
+          <svg viewBox="0 0 24 24"><path d="M8.59 16.59L4 12l4.59-4.59L10 8.83 6.83 12 10 15.17zM15.41 16.59L20 12l-4.59-4.59L14 8.83 17.17 12 14 15.17z"/></svg>
+        </div>
+        <div class="before-lbl">ORIGINAL</div>
+        <div class="after-lbl">AI ENHANCED</div>
+      </div>
+    </div>
+    <div id="method-info" class="method-info"></div>
+    <div class="actions">
+      <a id="btn-dl-enhanced" class="btn btn-secondary" download>⬇ Download Enhanced</a>
+      <button class="btn btn-accent" onclick="goToStep2()">Next: Add Labels →</button>
+      <button class="btn btn-secondary" onclick="resetApp()">↺ New Image</button>
+    </div>
+  </div>
+
+  <!-- ── STEP 2: Label Form ── -->
+  <div id="step2-form" class="section">
+    <div class="step2-layout">
+
+      <!-- Left: thumbnail -->
+      <div>
+        <div class="preview-thumb">
+          <img id="thumb-img" src="" alt="Enhanced fabric"/>
+        </div>
+        <p style="margin-top:10px;font-size:11px;color:var(--muted);text-align:center">Enhanced image · Labels will be placed on this</p>
+      </div>
+
+      <!-- Right: form -->
+      <div class="form-card">
+        <h3>📝 Product Details</h3>
+
+        <div class="form-grid">
+          <div class="form-group full">
+            <label>Product Code / Name</label>
+            <input type="text" id="f-product" placeholder="e.g. Waffle print / L-1"/>
+          </div>
+          <div class="form-group">
+            <label>GSM</label>
+            <input type="text" id="f-gsm" placeholder="e.g. 190-210"/>
+          </div>
+          <div class="form-group">
+            <label>Width</label>
+            <input type="text" id="f-width" placeholder="e.g. 62&quot; 63&quot;"/>
+          </div>
+        </div>
+
+        <!-- Logo upload -->
+        <div class="logo-drop" id="logo-drop">
+          <input type="file" id="logo-input" accept="image/png,image/jpeg,image/webp" onchange="handleLogo(this)"/>
+          <span id="logo-label">🖼 Upload Company Logo (optional)</span>
+        </div>
+
+        <div class="divider-label"><span>Color Labels</span></div>
+
+        <div id="detect-status" class="detect-status"></div>
+
+        <!-- Manual swatch count control (shown when no Anthropic key) -->
+        <div id="manual-count-row" style="display:none;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+          <label style="font-size:12px;color:var(--muted);font-weight:600">SWATCH COUNT</label>
+          <input type="number" id="swatch-count-input" min="1" max="20" value="6"
+                 style="width:70px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;color:var(--text);font-size:14px;font-weight:700;text-align:center"/>
+          <button class="btn-sm" onclick="redetectManual()" style="padding:7px 14px;font-size:12px">↺ Update Fields</button>
+        </div>
+
+        <div class="swatch-list" id="swatch-list">
+          <!-- populated by JS -->
+        </div>
+
+        <div class="actions" style="margin-top:0">
+          <button class="btn btn-accent" onclick="generateComposed()" id="btn-generate">✦ Generate Branded Image</button>
+          <button class="btn btn-secondary" onclick="goToStep1()">← Back</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── STEP 3: Composed Result ── -->
+  <div id="step3-result" class="section">
+    <div class="composed-wrap">
+      <img id="img-composed" src="" alt="Branded fabric image"/>
+    </div>
+    <div class="actions">
+      <a id="btn-dl-composed" class="btn btn-primary" download>⬇ Download Branded Image</a>
+      <button class="btn btn-accent" onclick="goToStep2()">✎ Adjust Labels</button>
+      <button class="btn btn-secondary" onclick="resetApp()">↺ New Image</button>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const API = 'http://localhost:8000';
+
+// ── App state ─────────────────────────────────────────────────
+let state = {
+  enhancedFilename: '',
+  enhancedUrl:      '',
+  swatches:         [],
+  logoBase64:       '',
+};
+let dragging = false;
+
+// ── DOM ───────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+// ── Init ──────────────────────────────────────────────────────
+(async () => {
+  try {
+    const res  = await fetch(`${API}/api/status`);
+    const data = await res.json();
+    updateMethodBadge(data.replicate_enabled, data.anthropic_enabled);
+  } catch { $('method-badge').textContent = '⚠ Server offline'; }
+})();
+
+function updateMethodBadge(replicate, anthropic) {
+  const b = $('method-badge');
+  if (replicate) {
+    b.textContent = '✦ Real-ESRGAN + Claude Vision';
+    b.className   = 'ai';
+    $('quality-ind').className = 'ai';
+    $('qi-text').textContent = 'Real-ESRGAN 4× active — maximum quality';
+  } else {
+    b.textContent = '⚙ Local fallback';
+    b.className   = 'local';
+    $('quality-ind').className = 'basic';
+    $('qi-text').textContent = 'Local LANCZOS — add API tokens for AI quality';
+  }
+}
+
+// ── Settings ──────────────────────────────────────────────────
+$('btn-settings').addEventListener('click', () => {
+  const p = $('settings-panel');
+  p.style.display = p.style.display === 'block' ? 'none' : 'block';
+});
+
+async function saveReplicate() {
+  const token = $('replicate-input').value.trim();
+  if (!token) return showMsg('replicate-msg', 'Enter your token.', false);
+  try {
+    const res  = await fetch(`${API}/api/set-token`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail);
+    showMsg('replicate-msg', '✓ Real-ESRGAN activated!', true);
+    updateMethodBadge(data.replicate_enabled, true);
+    $('replicate-input').value = '';
+    setTimeout(() => { $('settings-panel').style.display = 'none'; }, 1400);
+  } catch(e) { showMsg('replicate-msg', '✗ ' + e.message, false); }
+}
+
+async function saveAnthropic() {
+  const token = $('anthropic-input').value.trim();
+  if (!token) return showMsg('anthropic-msg', 'Enter your API key.', false);
+  try {
+    const res  = await fetch(`${API}/api/set-anthropic-key`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail);
+    showMsg('anthropic-msg', '✓ Claude Vision activated — swatches will be auto-detected!', true);
+    $('anthropic-input').value = '';
+    setTimeout(() => { $('settings-panel').style.display = 'none'; }, 1400);
+  } catch(e) { showMsg('anthropic-msg', '✗ ' + e.message, false); }
+}
+
+function showMsg(id, text, ok) {
+  const el = $(id);
+  el.textContent = text;
+  el.className = 'token-msg ' + (ok ? 'ok' : 'err');
+  el.style.display = 'block';
+}
+
+// ── Upload ────────────────────────────────────────────────────
+$('upload-zone').addEventListener('dragover', e => { e.preventDefault(); $('upload-zone').classList.add('drag-over'); });
+$('upload-zone').addEventListener('dragleave', () => $('upload-zone').classList.remove('drag-over'));
+$('upload-zone').addEventListener('drop', e => { e.preventDefault(); $('upload-zone').classList.remove('drag-over'); if(e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]); });
+$('file-input').addEventListener('change', () => { if($('file-input').files[0]) processFile($('file-input').files[0]); });
+
+// ── STEP 1: Enhance ───────────────────────────────────────────
+async function processFile(file) {
+  showProcessing('Enhancing fabric image…', 'Uploading image…');
+  setStep(1, false);
+
+  const steps = ['Correcting lighting (LAB space)…','Reducing sensor noise…','Running 4× super-resolution…','Sharpening fabric texture…','Locking brightness to original…'];
+  let si = 0;
+  const iv = setInterval(() => { if(si < steps.length) $('proc-step').textContent = steps[si++]; }, 1200);
+
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch(`${API}/api/enhance`, {method:'POST', body:fd});
+    clearInterval(iv);
+    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Error '+res.status); }
+    const data = await res.json();
+
+    state.enhancedFilename = data.enhanced_filename;
+    state.enhancedUrl      = API + data.enhanced_url;
+
+    showStep1Results(data, file);
+  } catch(e) { clearInterval(iv); showError(e.message); }
+}
+
+function showStep1Results(data, file) {
+  const ts = '?t=' + Date.now();
+  $('img-enh').src  = API + data.enhanced_url + ts;
+  $('img-orig').src = API + data.raw_url       + ts;
+  $('btn-dl-enhanced').href     = API + data.enhanced_url;
+  $('btn-dl-enhanced').download = 'enhanced_' + file.name.replace(/\.[^.]+$/,'') + '.jpg';
+
+  const s = data.stats;
+  $('stats-bar').innerHTML = [
+    mkPill('Resolution', s.original_resolution + ' → ' + s.enhanced_resolution, true),
+    mkPill('Scale', s.scale_factor + '×'),
+    mkPill('Original', fmtKb(s.raw_size_kb)),
+    mkPill('Enhanced', fmtKb(s.enhanced_size_kb)),
+    mkPill('Time', s.processing_seconds + 's'),
+  ].join('');
+
+  $('method-info').innerHTML = `<strong>Method:</strong> ${s.method} &nbsp;·&nbsp; Colours preserved via LAB L-channel · JPEG 97% 4:4:4`;
+
+  hideAll();
+  $('step1-result').style.display = 'block';
+  $('step-bar').style.display     = 'block';
+  setStep(1, true);
+  $('img-enh').onload = () => setSlider(50);
+}
+
+// ── STEP 2: Swatch detection + form ──────────────────────────
+async function goToStep2() {
+  showProcessing('Detecting fabric swatches…', 'Sending image to Claude Vision…');
+
+  try {
+    const res = await fetch(`${API}/api/detect-swatches`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({enhanced_filename: state.enhancedFilename}),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Detection failed');
+
+    state.swatches = data.swatches;
+
+    hideAll();
+    $('step2-form').style.display = 'block';
+    $('step-bar').style.display   = 'block';
+    setStep(2, true);
+
+    // Set thumbnail
+    $('thumb-img').src = state.enhancedUrl + '?t=' + Date.now();
+
+    // Detection status badge
+    const ds = $('detect-status');
+    if (data.method === 'claude-vision') {
+      ds.textContent = `✦ Claude Vision detected ${data.swatches.length} swatches automatically`;
+      ds.className = 'detect-status ai';
+      $('manual-count-row').style.display = 'none';
+    } else {
+      ds.textContent = `⚙ Manual split — set the correct swatch count below and click Update Fields`;
+      ds.className = 'detect-status manual';
+      $('manual-count-row').style.display = 'flex';
+      $('swatch-count-input').value = data.swatches.length;
+    }
+    ds.style.display = 'block';
+
+    // Build color input fields
+    buildSwatchInputs(data.swatches);
+
+  } catch(e) { showError(e.message); }
+}
+
+async function redetectManual() {
+  const count = parseInt($('swatch-count-input').value) || 6;
+  const res  = await fetch(`${API}/api/detect-swatches`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({enhanced_filename: state.enhancedFilename, swatch_count: count}),
+  });
+  const data = await res.json();
+  state.swatches = data.swatches;
+  buildSwatchInputs(data.swatches);
+}
+
+function buildSwatchInputs(swatches) {
+  const list = $('swatch-list');
+  list.innerHTML = '';
+  swatches.forEach((sw, i) => {
+    const row = document.createElement('div');
+    row.className = 'swatch-row';
+    row.innerHTML = `
+      <div class="swatch-num">${i+1}</div>
+      <input type="text" placeholder="${sw.color_description || 'Color name'}"
+             id="color-${i}" value="${sw.color_description || ''}"
+             title="Swatch ${i+1} — at ${sw.y_percent}% from top"/>
+    `;
+    list.appendChild(row);
+  });
+}
+
+function goToStep1() {
+  hideAll();
+  $('step1-result').style.display = 'block';
+  $('step-bar').style.display     = 'block';
+  setStep(1, true);
+}
+
+// ── Logo handling ─────────────────────────────────────────────
+function handleLogo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    state.logoBase64 = e.target.result.split(',')[1]; // strip data URL prefix
+    $('logo-drop').classList.add('has-logo');
+    $('logo-label').textContent = '✓ Logo: ' + file.name;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── STEP 3: Compose ──────────────────────────────────────────
+async function generateComposed() {
+  const colors = state.swatches.map((_, i) => ($(`color-${i}`)?.value.trim() || ''));
+
+  const payload = {
+    enhanced_filename: state.enhancedFilename,
+    product_code:      $('f-product').value.trim(),
+    gsm:               $('f-gsm').value.trim(),
+    width:             $('f-width').value.trim(),
+    colors,
+    swatches:          state.swatches,
+    logo_base64:       state.logoBase64 || '',
+  };
+
+  showProcessing('Generating branded image…', 'Composing labels and overlays…');
+
+  try {
+    const res = await fetch(`${API}/api/compose`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Compose failed');
+
+    const composedUrl = API + data.composed_url + '?t=' + Date.now();
+    $('img-composed').src         = composedUrl;
+    $('btn-dl-composed').href     = API + data.composed_url;
+    $('btn-dl-composed').download = 'branded_fabric.jpg';
+
+    hideAll();
+    $('step3-result').style.display = 'block';
+    $('step-bar').style.display     = 'block';
+    setStep(3, true);
+
+  } catch(e) { showError(e.message); }
+}
+
+// ── Comparison slider ─────────────────────────────────────────
+function setSlider(pct) {
+  pct = Math.max(2, Math.min(98, pct));
+  $('orig-wrap').style.width  = pct + '%';
+  $('divider').style.left     = pct + '%';
+  $('handle').style.left      = pct + '%';
+}
+$('slider').addEventListener('mousedown', e => { dragging=true; mv(e); });
+$('slider').addEventListener('touchstart', e => { dragging=true; mv(e); }, {passive:true});
+window.addEventListener('mousemove', e => { if(dragging) mv(e); });
+window.addEventListener('touchmove', e => { if(dragging) mv(e); }, {passive:true});
+window.addEventListener('mouseup',  () => dragging=false);
+window.addEventListener('touchend', () => dragging=false);
+function mv(e) {
+  const rect = $('slider').getBoundingClientRect();
+  const x = e.touches ? e.touches[0].clientX : e.clientX;
+  setSlider(((x - rect.left) / rect.width) * 100);
+}
+
+// ── Step indicator ────────────────────────────────────────────
+function setStep(active, markDone) {
+  [1,2,3].forEach(n => {
+    const el = $(`s${n}`);
+    el.className = 'step' + (n < active ? ' done' : n === active ? ' active' : '');
+  });
+  [1,2].forEach(n => {
+    const el = $(`l${n}`);
+    el.className = 'step-line' + (n < active ? ' done' : '');
+  });
+}
+
+// ── UI helpers ────────────────────────────────────────────────
+function showProcessing(title, step) {
+  hideAll();
+  $('proc-title').textContent = title;
+  $('proc-step').textContent  = step;
+  $('processing').style.display = 'block';
+}
+
+function showError(msg) {
+  hideAll();
+  $('upload-zone').style.display = 'block';
+  $('error-box').style.display   = 'block';
+  $('error-box').textContent     = '⚠ ' + msg;
+}
+
+function hideAll() {
+  ['upload-zone','processing','step1-result','step2-form','step3-result','error-box']
+    .forEach(id => $(id).style.display = 'none');
+}
+
+function resetApp() {
+  state = {enhancedFilename:'', enhancedUrl:'', swatches:[], logoBase64:''};
+  $('file-input').value = '';
+  $('logo-input').value = '';
+  $('step-bar').style.display = 'none';
+  hideAll();
+  $('upload-zone').style.display = 'block';
+}
+
+function mkPill(label, value, hi=false) {
+  return `<div class="pill${hi?' hi':''}"><span class="lbl">${label}</span><span class="val">${value}</span></div>`;
+}
+function fmtKb(kb) { return kb>=1024 ? (kb/1024).toFixed(1)+' MB' : kb+' KB'; }
+</script>
+</body>
+</html>
