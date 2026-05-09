@@ -87,6 +87,11 @@ def serve_frontend():
     return FileResponse(str(idx)) if idx.exists() else JSONResponse({"status": "API running"})
 
 
+@app.get("/api/health")
+def health():
+    return {"status": "ok"}
+
+
 @app.get("/api/status")
 def status():
     return {
